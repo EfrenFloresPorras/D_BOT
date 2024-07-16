@@ -1,5 +1,6 @@
 require('dotenv').config();
-const { Client, IntentsBitField, EmbedBuilder } = require('discord.js');
+const { Client, IntentsBitField, EmbedBuilder, ActivityType } = require('discord.js');
+const eventHanlder = require('./handlers/eventHandler.js');
 
 const client = new Client({
     intents: [
@@ -10,9 +11,27 @@ const client = new Client({
     ]
 });
 
-client.on('ready', (c) => {
-    console.log(`${c.user.tag} is online.`);
-});
+let status = [
+    {
+        name: 'with discord.js',
+        type: ActivityType.Playing
+    },
+    {
+        name: 'with discord.js',
+        type: ActivityType.Watching
+    },
+    {
+        name: 'with discord.js',
+        type: ActivityType.Listening
+    },
+    {
+        name: 'with discord.js',
+        type: ActivityType.Streaming,
+        url: 'https://twitch.tv/username'
+    },
+]
+
+eventHanlder(client);
 
 client.on('messageCreate', (message) => {
     if (message.author.bot) return;
