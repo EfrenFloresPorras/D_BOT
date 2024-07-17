@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { Client, IntentsBitField, EmbedBuilder, ActivityType } = require('discord.js');
+const mongose = requiere('mongoose');
 const eventHanlder = require('./handlers/eventHandler.js');
 
 const client = new Client({
@@ -31,7 +32,18 @@ let status = [
     },
 ]
 
-eventHanlder(client);
+( async () => {
+    try {
+        await mongose.connect(process.env.MONGO_URI, { keepAlive: true });
+        console.log('Connected to MongoDB');
+
+        eventHanlder(client);
+    } catch (error) {
+        console.error(error);
+    }
+})
+
+
 
 client.on('messageCreate', (message) => {
     if (message.author.bot) return;
