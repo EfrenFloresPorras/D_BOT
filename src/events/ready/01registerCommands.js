@@ -1,11 +1,13 @@
 
+const { Application } = require('discord.js');
 const [] = require('../../../config.json');
+const areCommandsDifferent = require('../../utils/areCommandsDifferent');
 const getApplicationsCommands = require('../../utils/getApplicationsCommands');
 
 module.exports = async (client) => {
     try {
         const localCommands = getLocalCommands();
-        const ApplicationComands = getApplicationsCommands(client, testServer);
+        const ApplicationComands = await getApplicationsCommands(client, testServer);
 
         for (const localCommand of localCommands) {
             const { name, description, options } = localCommand;
@@ -17,10 +19,32 @@ module.exports = async (client) => {
             if (existingCommand) {
                 if (localCommand.deleted){
                     await ApplicationComands.delete(existingCommand.id);
-                    break;
+                    console.log(`Command ${name} deleted`);
+                    continue;
                 }
 
-                
+                if (areCommandsDifferent(existingCommand, localCommand)) {
+                    await ApplicationComands.edit(existingCommand.id, {
+                        name,
+                        description,
+                        options,
+                    });
+
+                    console.log(`Command ${name} updated`);
+                } else {
+                    if (localCommand.deleted) {
+                        console.log('Skipping registering coomand ${name} as its set to delete.');
+                        continue;
+                    }
+
+                    await ApplicationComands.create({
+                        name,
+                        description,
+                        options,
+                    });
+
+                    console.log(`Command ${name} registered`);
+                }
             }
         }
     } catch (error) {
