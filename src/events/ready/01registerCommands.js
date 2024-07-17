@@ -1,6 +1,6 @@
 
 const { Application } = require('discord.js');
-const [] = require('../../../config.json');
+const {} = require('../../../config.json');
 const areCommandsDifferent = require('../../utils/areCommandsDifferent');
 const getApplicationsCommands = require('../../utils/getApplicationsCommands');
 

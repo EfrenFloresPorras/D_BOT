@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { Client, IntentsBitField, EmbedBuilder, ActivityType } = require('discord.js');
-const mongose = requiere('mongoose');
+const mongose = require('mongoose');
 const eventHanlder = require('./handlers/eventHandler.js');
 
 const client = new Client({
@@ -8,9 +8,23 @@ const client = new Client({
         IntentsBitField.Flags.Guilds,
         IntentsBitField.Flags.GuildMembers,
         IntentsBitField.Flags.GuildMessages,
+        IntentsBitField.Flags.GuildPresences,
         IntentsBitField.Flags.MessageContent,
     ]
 });
+
+( async () => {
+    try {
+        await mongose.connect(process.env.MONGO_URI, { keepAlive: true });
+        console.log('Connected to MongoDB');
+
+        eventHanlder(client);
+
+        client.login(process.env.TOKEN);
+    } catch (error) {
+        console.error(error);
+    }
+})();
 
 let status = [
     {
@@ -30,20 +44,7 @@ let status = [
         type: ActivityType.Streaming,
         url: 'https://twitch.tv/username'
     },
-]
-
-( async () => {
-    try {
-        await mongose.connect(process.env.MONGO_URI, { keepAlive: true });
-        console.log('Connected to MongoDB');
-
-        eventHanlder(client);
-    } catch (error) {
-        console.error(error);
-    }
-})
-
-
+];
 
 client.on('messageCreate', (message) => {
     if (message.author.bot) return;
@@ -150,5 +151,3 @@ client.on('interactionCreate', async (interaction) => {
 
     
 });
-
-client.login(process.env.TOKEN); // Here you need to put your bot token

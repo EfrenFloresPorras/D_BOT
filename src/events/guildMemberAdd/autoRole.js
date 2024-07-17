@@ -1,0 +1,22 @@
+const { Client, Interaction, GuildMember } = require('discord.js');
+const AutoRole = require('../../models/AutoRole');
+
+/**
+ * 
+ * @param {Client} client 
+ * @param {Interaction} member 
+ */
+
+module.exports = async (client, member) => {
+    try {
+        let guild = member.guild;
+        if (!guild) return;
+
+        const autoRole = AutoRole.findOne({ guildId: guild.id });
+        if (!autoRole) return;
+
+        await member.roles.add(autoRole.roleId);
+    } catch (error) {
+        console.error(error);
+    }
+};
