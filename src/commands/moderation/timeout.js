@@ -1,98 +1,114 @@
-const { Client, Interaction, ApplicationCommandOptionType, permissionsRequiered, botPermissions } = require('disccord.js');
-const ms = require('ms');
+const {
+  Client,
+  Interaction,
+  ApplicationCommandOptionType,
+  PermissionFlagsBits,
+} = require("discord.js");
+
+const ms = require("ms");
+
+const { permissionsRequired } = require("./ban");
 
 module.exports = {
+  /*
+   *
+   * @param {Client} client
+   * @param {Interaction} interaction
+   *
+   */
+  callback: async (client, interaction) => {
+    const mentionable = interaction.options.get("target-user").value;
+    const duration = interaction.options.get("duration").value; // 1d, 1 day, 1s 5s, 5m
+    const reason =
+      interaction.options.get("reason")?.value || "No reason provided";
 
-    /**
-     * 
-     * @param {Client} client 
-     * @param {Interaction} interaction 
-     */
+    await interaction.deferReply();
 
-    callback: async (client, interaction) => {
-        const mentionable = interaction.options.get('target').value;
-        const duration = interaction.options.get('duration').value; // 1d, 1w, 1m, 1y
-        const reason = interaction.options.get('reason')?.value || 'No reason provided';
+    const targetUser = await interaction.guild.members.fetch(mentionable);
+    if (!targetUser) {
+      await interaction.editReply("That user doesn't exist in this server.");
+      return;
+    }
 
-        await interaction.deferReply();
+    if (targetUser.user.bot) {
+      await interaction.editReply("I can't timout a bot.");
+      return;
+    }
 
-        const target = await interaction.guild.members.fetch(mentionable);
-        if (!target) {
-            await interaction.editReply('User not found');
-            return;
-        }
+    const msDuration = ms(duration);
 
-        if (target.user.bot) {
-            await interaction.editReply('You cannot timeout a bot');
-            return;
-        }
+    if (isNaN(msDuration)) {
+      await interaction.editReply("Please provide a valid timout duration.");
+      return;
+    }
 
-        const msDuration = ms(duration);
-        if (isNaN(msduration)) {
-            await interaction.editReply('Invalid duration');
-            return;
-        }
+    if (msDuration < 5000 || msDuration > 2.419e9) {
+      await interaction.editReply(
+        "Timeout duration cannot be less than 5 seconds or more than 28 days.",
+      );
+      return;
+    }
 
-        if (msDuration < 5000 || msDuration > 2.419e9){
-            await interaction.editReply('The duration must be between 5 seconds and 28 days');
-            return;
-        }
+    const targetUserRolePosition = targetUser.roles.highest.position; // highest role of the target user
+    const requestUserRolePosition = interaction.member.roles.highest.position; // highest role fo the user running the command
+    const botRolePosition = interaction.guild.members.me.roles.highest.position; // highest role of the bot
 
-        const targetRolePosition = target.roles.highest.position; // The position of the highest role of the target
-        const requestUserRolePosition = interaction.member.roles.highest.position; // The position of the highest role of the user who requested the ban
-        const botRolePosition = interaction.guild.members.me.roles.highest.position; // The position of the highest role of the bot
+    if (targetUserRolePosition >= requestUserRolePosition) {
+      await interaction.editReply(
+        "You can't timeout that user because they have the same/higher role than you.",
+      );
+      return;
+    }
 
-        if (requestUserRolePosition <= targetRolePosition) {
-            await interaction.editReply('You cannot timeout this user because they have a higher role than you');
-            return;
-        }
+    if (targetUserRolePosition >= botRolePosition) {
+      await interaction.editReply(
+        "I can't timeout that user because the same/higher role than me",
+      );
+      return;
+    }
 
-        if (botRolePosition <= targetRolePosition) {
-            await interaction.editReply('I cannot timeout this user because they have a higher role than me');
-            return;
-        }
+    // timeout the user
+    try {
+      const { default: prettyMs } = await import("pretty-ms");
 
-        // TIMEOUT TARGET
-        try {
-            const { default: prettyMs } = await import('pretty-ms')
+      if (targetUser.isCommunicationDisabled()) {
+        await targetUser.timeout(msDuration, reason);
+        await interaction.editReply(
+          `${targetUser}'s' timout has been updated to ${prettyMs(msDuration, { verbose: true })}.\nReason ${reason}`,
+        );
+        return;
+      }
 
-            if (target.isCommunicationDisabled()) {
-                await target.timeout(msDuration, reason);
-                await interaction.editReply('User ${target} timeout has been updated to ${prettyMs(msDuration), {verbose: true}}\nReason: ${reason}');
-                return;
-            }
-
-            await target.timeout(msDuration, reason);
-            await interaction.editReply('User ${target} was timedout for ${prettyMs(msDuration), {verbose: true}}. \nReason: ${reason}');
-        } catch (error) {
-            console.error(error);
-            await interaction.editReply('There was an error trying to timeout this user: ${error}');
-        }
-
-    }, 
-
-    name: 'timeout',
-    description: 'Timeout a user',
-    options: [
-        {
-            name: 'target',
-            description: 'The user to timeout',
-            type: ApplicationCommandOptionType.Mentionable,
-            required: true
-        },
-        {
-            name: 'duration',
-            description: 'The duration of the timeout',
-            type: ApplicationCommandOptionType.STRING,
-            required: true
-        },
-        {
-            name: 'reason',
-            description: 'The reason for the timeout',
-            type: ApplicationCommandOptionType.STRING,
-        }
-    ],
-
-    permissionsRquiered: [permissionsRequiered.MuteMembers],
-    botPermissions: [botPermissions.MuteMembers],
-}
+      await targetUser.timeout(msDuration, reason);
+      await interaction.editReply(
+        `${targetUser}' was timed out for ${prettyMs(msDuration, { verbose: true })}.\nReason ${reason}`,
+      );
+    } catch (error) {
+      console.log(`There was an error when timing out: ${error}`);
+    }
+  },
+  name: "timeout",
+  description: "Timeout a user.",
+  options: [
+    {
+      name: "target-user",
+      description: "The user you want to timeout.",
+      type: ApplicationCommandOptionType.Mentionable,
+      required: true,
+    },
+    {
+      name: "duration",
+      description: "Timeout duration (30m, 1h, 1day)",
+      type: ApplicationCommandOptionType.String,
+      required: true,
+    },
+    {
+      name: "reason",
+      description: "The reason for the timeout",
+      type: ApplicationCommandOptionType.String,
+      required: false,
+    },
+  ],
+  permissionsRequired: [PermissionFlagsBits.MuteMembers],
+  botPermissions: [PermissionFlagsBits.MuteMembers],
+};

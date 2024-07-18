@@ -1,30 +1,32 @@
-const { Client, Interaction, PermissionFlagBits } = require('discord.js');
-const AutoRole = require('../../models/AutoRole');
+const { Client, Interaction, PermissionFlagsBits } = require("discord.js");
+const AutoRole = require("../../models/AutoRole");
 
 module.exports = {
-    /**
-     * 
-     * @param {Client} client 
-     * @param {Interaction} interaction 
-     */
+  /**
+   * @param {Client} client
+   * @param {Interaction} interaction
+   */
+  callback: async (client, interaction) => {
+    try {
+      await interaction.deferReply();
 
-    callback: async (client, interaction) => {
-        try {
-            await interaction.deferReply();
+      if (!(await AutoRole.exists({ guildId: interaction.guild.id }))) {
+        interaction.editReply(
+          "Auto role has not been configured for this server. Use `/autorole-configure` to set it up.",
+        );
+        return;
+      }
 
-            if (!await AutoRole.exists({ guildId: interaction.guild.id })) {
-                return interaction.editReply('The auto role has not been configured yet!Use the `/autorole-configure` command to configure it.');
-            }
+      await AutoRole.findOneAndDelete({ guildId: interaction.guild.id });
+      interaction.editReply(
+        "Auto role has been disabled for this server. Use `/autorole-configure` to set it up again.",
+      );
+    } catch (error) {
+      console.log(error);
+    }
+  },
 
-            await AutoRole.findOneAndDelete({ guildId: interaction.guild.id });
-            interaction.editReply('Auto role disabled! Use the `/autorole-configure` command to configure it again.');
-        } catch (error) {
-            console.error(error);
-            interaction.reply('An error occurred while trying to disable the auto role!');
-        }
-    },
-
-    name: 'autorole-disable',
-    description: 'Disable the auto role for the server',
-    permissionsRequired: [PermissionFlagBits.ADMINISTRATOR],
+  name: "autorole-disable",
+  description: "Disable auto-role in this server.",
+  permissionsRequired: [PermissionFlagsBits.Administrator],
 };

@@ -1,79 +1,78 @@
-const { Client, Interaction, ApplicationComandOptionType, PermissionFlagsBits } = require('discord.js');
-
-module.exports = {
+const {
+    ApplicationCommandOptionType,
+    PermissionFlagsBits,
+  } = require("discord.js");
+  
+  module.exports = {
     /**
-     * 
-     * @param {Client} client 
-     * @param {Interaction} interaction 
+     *
+     * @param {Client} client
+     * @param {Interaction} interaction
+     *
      */
-
-    callback: async (client, interaction) =>{
-        const targetUserId = interaction.options.get('target').value;
-        const reason = interaction.options.get('reason')?.value || 'No reason provided';
-
-        await interaction.deferReply();
-
-        const target = await interaction.guild.members.fetch(targetUserId);
-
-        if (!target) {
-            await interaction.editReply('User not found');
-            return;
-        }
-
-        if (!target.bannable) {
-            await interaction.editReply('I cannot ban this user');
-            return;
-        }
-
-        if (target.id === interaction.guild.ownerId) {
-            await interaction.editReply('You cannot ban the owner of the server');
-            return;
-        }
-
-        const targetRolePosition = target.roles.highest.position; // The position of the highest role of the target
-        const requestUserRolePosition = interaction.member.roles.highest.position; // The position of the highest role of the user who requested the ban
-        const botRolePosition = interaction.guild.members.me.roles.highest.position; // The position of the highest role of the bot
-
-        if (requestUserRolePosition <= targetRolePosition) {
-            await interaction.editReply('You cannot ban this user because they have a higher role than you');
-            return;
-        }
-
-        if (botRolePosition <= targetRolePosition) {
-            await interaction.editReply('I cannot ban this user because they have a higher role than me');
-            return;
-        }
-
-        // BAN TARGET
-        try {
-            await target.ban({ reason });
-            await interaction.editReply('User ${target} banned successfully, reason: ${reason}');
-        } catch (error) {
-            console.error(error);
-            await interaction.editReply('There was an error trying to ban this user: ${error}');
-        }
-
+    callback: async (client, interaction) => {
+      const targetUserId = interaction.options.get("target-user").value;
+      const reason =
+        interaction.options.get("reason")?.value || "No reason provided";
+  
+      await interaction.deferReply();
+  
+      const targetUser = await interaction.guild.members.fetch(targetUserId);
+  
+      if (!targetUser) {
+        await interaction.editReply("That user doesn't exist in this server.");
+        return;
+      }
+      if (targetUser.id === interaction.guild.ownerId) {
+        await interaction.editReply(
+          "You can't ban that user because they're the server owner.",
+        );
+        return;
+      }
+  
+      const targetUserRolePosition = targetUser.roles.highest.position; // highest role of the target user
+      const requestUserRolePosition = interaction.member.roles.highest.position; // highest role fo the user running the command
+      const botRolePosition = interaction.guild.members.me.roles.highest.position;
+  
+      if (targetUserRolePosition >= requestUserRolePosition) {
+        await interaction.editReply(
+          "You can't ban that user because they have the same/higher role than you.",
+        );
+        return;
+      }
+  
+      if (targetUserRolePosition >= botRolePosition) {
+        await interaction.editReply(
+          "I can't ban that user because the same/higher role than me",
+        );
+        return;
+      }
+  
+      // ban the targetUser
+      try {
+        await targetUser.ban({ reason });
+        await interaction.editReply(
+          `User ${targetUser} was banned\nReason: ${reason}`,
+        );
+      } catch (error) {
+        console.log(`There was an error when banning: ${error}`);
+      }
     },
-
-    name: 'ban',
-    description: 'Bans a member from the server',
-    // devOnly: Boolean,
-    // testOnly: Boolean,
+    name: "ban",
+    description: "Bans a member from this server.",
     options: [
-        {
-            name: 'target',
-            description: 'The member to ban',
-            requiered : true,
-            type: ApplicationComandOptionType.Mentionable,
-        },
-        {
-            name: 'reason',
-            description: 'The reason for banning this member',
-            type: ApplicationComandOptionType.String,
-        
-        }
+      {
+        name: "target-user",
+        description: "The user you want to ban.",
+        type: ApplicationCommandOptionType.Mentionable,
+        required: true,
+      },
+      {
+        name: "reason",
+        description: "The reason you want to ban.",
+        type: ApplicationCommandOptionType.String,
+      },
     ],
-
-    permissionsRequiered: [PermissionFlagsBits.BanMembers],
-    botPermissions: [PermissionFlagsBits.BanMembers],    
-}
+    permissionsRequired: [PermissionFlagsBits.BanMembers],
+    botPermissions: [PermissionFlagsBits.BanMembers],
+  };
